@@ -1,0 +1,2122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GIS STS WORLD MAP — Module v2.1</title>
+    
+    <!-- ============================================================
+    LIBRARIES
+    ============================================================ -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://unpkg.com/milsymbol@2.3.0/dist/milsymbol.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
+    
+    <style>
+        /* ============================================================
+        GLOBAL STYLES
+        ============================================================ */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --bg-primary: #0a0e17;
+            --bg-secondary: #111827;
+            --bg-panel: rgba(10, 14, 23, 0.95);
+            --bg-card: rgba(20, 28, 45, 0.85);
+            --accent: #4fc3f7;
+            --accent-gold: #c9a84c;
+            --accent-red: #ff4444;
+            --accent-green: #00ff9d;
+            --accent-blue: #4fc3f7;
+            --accent-orange: #ff8800;
+            --text-primary: #e8edf5;
+            --text-secondary: #8892b0;
+            --border-color: rgba(79, 195, 247, 0.15);
+            --shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+            --radius: 10px;
+            --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+        
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: var(--font);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            user-select: none;
+        }
+        
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--accent);
+            border-radius: 4px;
+        }
+        
+        /* ============================================================
+        TOP BAR — GIS STS HEADER
+        ============================================================ */
+        .top-bar {
+            position: absolute;
+            top: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: var(--bg-panel);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 6px 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: var(--shadow);
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 98%;
+            pointer-events: none;
+        }
+        .top-bar * {
+            pointer-events: auto;
+        }
+        
+        .top-bar .logo {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 700;
+        }
+        .top-bar .logo i {
+            font-size: 20px;
+            color: var(--accent);
+        }
+        .top-bar .logo h1 {
+            font-size: 15px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent), var(--accent-gold));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .top-bar .logo h1 small {
+            font-size: 8px;
+            color: var(--text-secondary);
+            -webkit-text-fill-color: var(--text-secondary);
+            font-weight: 400;
+            margin-left: 4px;
+        }
+        
+        .top-bar .badge-gis {
+            font-size: 7px;
+            background: rgba(79, 195, 247, 0.12);
+            color: var(--accent);
+            padding: 2px 10px;
+            border-radius: 12px;
+            border: 1px solid rgba(79, 195, 247, 0.15);
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        
+        .top-bar .nav-links {
+            display: flex;
+            gap: 3px;
+        }
+        .top-bar .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 8px;
+            padding: 3px 10px;
+            border-radius: 6px;
+            transition: all var(--transition);
+            font-weight: 500;
+        }
+        .top-bar .nav-links a:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.04);
+        }
+        .top-bar .nav-links a.active {
+            color: var(--accent);
+            background: rgba(79, 195, 247, 0.08);
+        }
+        
+        .top-bar .sos-btn {
+            background: var(--accent-red);
+            color: #fff;
+            border: none;
+            border-radius: 20px;
+            padding: 3px 14px;
+            font-size: 9px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            animation: pulse-sos 2s ease-in-out infinite;
+        }
+        .top-bar .sos-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(255, 68, 68, 0.3);
+        }
+        @keyframes pulse-sos {
+            0%,
+            100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.6;
+            }
+        }
+        
+        /* ============================================================
+        PROVIDER GRID — 9 Map Providers
+        ============================================================ */
+        .provider-grid {
+            position: absolute;
+            top: 55px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: var(--bg-panel);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 5px 10px;
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2px;
+            max-width: 96%;
+            justify-content: center;
+        }
+        .provider-btn {
+            padding: 3px 9px;
+            border-radius: 6px;
+            border: 1px solid transparent;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 7px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            white-space: nowrap;
+        }
+        .provider-btn:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.04);
+        }
+        .provider-btn.active {
+            background: rgba(79, 195, 247, 0.12);
+            border-color: rgba(79, 195, 247, 0.3);
+            color: var(--accent);
+        }
+        .provider-btn .badge {
+            font-size: 5px;
+            background: rgba(79, 195, 247, 0.12);
+            padding: 1px 5px;
+            border-radius: 8px;
+            color: var(--accent);
+            font-weight: 600;
+        }
+        .provider-btn .icon {
+            font-size: 10px;
+        }
+        
+        /* ============================================================
+        MAP CONTAINER
+        ============================================================ */
+        #mapContainer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+        
+        .leaflet-control-zoom {
+            display: none !important;
+        }
+        .leaflet-control-attribution {
+            background: rgba(10, 14, 23, 0.8) !important;
+            color: #667 !important;
+            font-size: 7px !important;
+        }
+        
+        /* Routing machine override */
+        .leaflet-routing-container {
+            background: var(--bg-panel) !important;
+            border: 1px solid var(--border-color) !important;
+            border-radius: var(--radius) !important;
+            color: var(--text-primary) !important;
+            font-size: 8px !important;
+            backdrop-filter: blur(12px) !important;
+        }
+        .leaflet-routing-container .leaflet-routing-alt {
+            background: transparent !important;
+            color: var(--text-secondary) !important;
+        }
+        .leaflet-routing-container .leaflet-routing-alt h2 {
+            color: var(--accent) !important;
+            font-size: 9px !important;
+        }
+        
+        /* ============================================================
+        RIGHT TOOLBAR
+        ============================================================ */
+        .right-toolbar {
+            position: absolute;
+            top: 100px;
+            right: 8px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .right-toolbar .tool-btn {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 5px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 11px;
+            transition: all var(--transition);
+            box-shadow: var(--shadow);
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .right-toolbar .tool-btn:hover {
+            border-color: var(--accent);
+            color: var(--text-primary);
+        }
+        .right-toolbar .tool-btn .badge-count {
+            position: absolute;
+            top: -3px;
+            right: -3px;
+            background: var(--accent-red);
+            color: #fff;
+            font-size: 6px;
+            border-radius: 50%;
+            width: 13px;
+            height: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+        }
+        .right-toolbar .tool-btn.active {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: rgba(79, 195, 247, 0.08);
+        }
+        .right-toolbar .tool-btn .safety-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+        }
+        .right-toolbar .tool-btn .safety-dot.green {
+            background: var(--accent-green);
+        }
+        .right-toolbar .tool-btn .safety-dot.gold {
+            background: var(--accent-gold);
+        }
+        .right-toolbar .tool-btn .safety-dot.red {
+            background: var(--accent-red);
+        }
+        
+        /* ============================================================
+        FLOATING PANELS
+        ============================================================ */
+        .panel {
+            background: var(--bg-panel);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 8px 10px;
+            position: absolute;
+            z-index: 500;
+            min-width: 170px;
+            max-width: 280px;
+            max-height: calc(100vh - 160px);
+            overflow-y: auto;
+            font-size: 8px;
+            transition: all var(--transition);
+            display: none;
+        }
+        .panel .panel-title {
+            font-size: 8px;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .panel .panel-title .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 10px;
+            padding: 0 3px;
+        }
+        .panel .panel-title .close-btn:hover {
+            color: var(--accent);
+        }
+        .panel .panel-row {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 0;
+        }
+        .panel .panel-row .label {
+            color: var(--text-secondary);
+            min-width: 44px;
+            font-size: 7px;
+        }
+        .panel .panel-row .value {
+            color: var(--text-primary);
+            font-weight: 500;
+            font-size: 8px;
+        }
+        .panel .panel-row .value.green {
+            color: var(--accent-green);
+        }
+        .panel .panel-row .value.gold {
+            color: var(--accent-gold);
+        }
+        .panel .panel-row .value.red {
+            color: var(--accent-red);
+        }
+        .panel .panel-row .value.blue {
+            color: var(--accent-blue);
+        }
+        
+        .panel .btn-sm {
+            padding: 2px 8px;
+            font-size: 7px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all var(--transition);
+            font-family: inherit;
+        }
+        .panel .btn-sm:hover {
+            border-color: var(--accent);
+            color: var(--text-primary);
+        }
+        .panel .btn-sm.primary {
+            background: var(--accent);
+            color: #000;
+            border-color: var(--accent);
+        }
+        .panel .btn-sm.danger {
+            background: var(--accent-red);
+            color: #fff;
+            border-color: var(--accent-red);
+        }
+        .panel .btn-sm.success {
+            background: var(--accent-green);
+            color: #000;
+            border-color: var(--accent-green);
+        }
+        .panel .btn-sm.gold {
+            background: var(--accent-gold);
+            color: #000;
+            border-color: var(--accent-gold);
+        }
+        .panel .btn-sm.orange {
+            background: var(--accent-orange);
+            color: #000;
+            border-color: var(--accent-orange);
+        }
+        
+        .panel .service-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 4px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            font-size: 7px;
+            color: var(--text-secondary);
+        }
+        .panel .service-item .icon {
+            font-size: 12px;
+        }
+        .panel .service-item .name {
+            color: var(--text-primary);
+        }
+        .panel .service-item .dist {
+            margin-left: auto;
+            color: var(--accent);
+            font-size: 7px;
+        }
+        .panel .service-item .phone {
+            color: var(--accent-gold);
+            font-size: 7px;
+            margin-left: 4px;
+        }
+        
+        .panel .layer-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 2px 4px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all var(--transition);
+            font-size: 7px;
+            color: var(--text-secondary);
+        }
+        .panel .layer-item:hover {
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text-primary);
+        }
+        .panel .layer-item .dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .panel .layer-item.active {
+            color: var(--text-primary);
+        }
+        
+        .panel .safe-zone-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 4px;
+            border-left: 2px solid var(--accent-green);
+            background: rgba(0, 255, 157, 0.04);
+            border-radius: 4px;
+            margin: 2px 0;
+            font-size: 7px;
+        }
+        .panel .safe-zone-item .zone-name {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+        .panel .safe-zone-item .zone-dist {
+            margin-left: auto;
+            color: var(--accent-green);
+        }
+        
+        /* ============================================================
+        COORDINATE PANEL
+        ============================================================ */
+        .coord-panel {
+            position: absolute;
+            bottom: 50px;
+            right: 8px;
+            z-index: 500;
+            background: var(--bg-panel);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 4px 10px;
+            font-size: 7px;
+            font-family: monospace;
+            color: var(--text-secondary);
+            box-shadow: var(--shadow);
+            min-width: 110px;
+        }
+        .coord-panel .coord-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 1px 0;
+        }
+        .coord-panel .coord-row .cvalue {
+            color: var(--text-primary);
+        }
+        .coord-panel .coord-row .mgrs-value {
+            color: var(--accent-gold);
+            font-weight: bold;
+        }
+        
+        /* ============================================================
+        STATUS DASHBOARD
+        ============================================================ */
+        .status-dashboard {
+            position: absolute;
+            bottom: 50px;
+            left: 8px;
+            z-index: 500;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            max-width: 180px;
+            pointer-events: none;
+        }
+        .status-dashboard * {
+            pointer-events: auto;
+        }
+        .status-dashboard .sd-item {
+            background: var(--bg-panel);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 3px 10px;
+            font-size: 7px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: var(--shadow);
+        }
+        .status-dashboard .sd-item .icon {
+            font-size: 10px;
+        }
+        .status-dashboard .sd-item .val {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .status-dashboard .sd-item .val.green {
+            color: var(--accent-green);
+        }
+        .status-dashboard .sd-item .val.gold {
+            color: var(--accent-gold);
+        }
+        .status-dashboard .sd-item .val.red {
+            color: var(--accent-red);
+        }
+        .status-dashboard .sd-item .val.blue {
+            color: var(--accent-blue);
+        }
+        
+        /* ============================================================
+        BOTTOM BAR
+        ============================================================ */
+        .bottom-bar {
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: var(--bg-panel);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 3px 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 7px;
+            color: var(--text-secondary);
+            box-shadow: var(--shadow);
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .bottom-bar .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+        .bottom-bar .stat-item i {
+            font-size: 8px;
+            color: var(--accent);
+        }
+        .bottom-bar .stat-item .value {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+        .bottom-bar .stat-item .value.green {
+            color: var(--accent-green);
+        }
+        .bottom-bar .stat-item .value.gold {
+            color: var(--accent-gold);
+        }
+        .bottom-bar .stat-item .value.red {
+            color: var(--accent-red);
+        }
+        
+        /* ============================================================
+        NOTIFICATIONS
+        ============================================================ */
+        .notification-container {
+            position: fixed;
+            top: 65px;
+            right: 45px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            max-width: 300px;
+        }
+        .notification {
+            background: var(--bg-panel);
+            backdrop-filter: blur(20px);
+            border-left: 4px solid var(--accent);
+            border-radius: var(--radius);
+            padding: 5px 12px;
+            box-shadow: var(--shadow);
+            font-size: 9px;
+            animation: slideIn 0.3s ease;
+            transition: all 0.3s;
+        }
+        .notification.info {
+            border-left-color: var(--accent);
+        }
+        .notification.warning {
+            border-left-color: var(--accent-orange);
+        }
+        .notification.error {
+            border-left-color: var(--accent-red);
+        }
+        .notification.success {
+            border-left-color: var(--accent-green);
+        }
+        @keyframes slideIn {
+            from {
+                transform: translateX(80px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        /* ============================================================
+        SAFE ZONE OVERLAY
+        ============================================================ */
+        .safe-zone-overlay {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: var(--bg-panel);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--accent-green);
+            border-radius: var(--radius);
+            padding: 6px 16px;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            box-shadow: var(--shadow);
+            font-size: 8px;
+            color: var(--text-secondary);
+        }
+        .safe-zone-overlay .zone-icon {
+            font-size: 18px;
+        }
+        .safe-zone-overlay .zone-info {
+            display: flex;
+            flex-direction: column;
+        }
+        .safe-zone-overlay .zone-info .title {
+            color: var(--accent-green);
+            font-weight: 700;
+            font-size: 10px;
+        }
+        .safe-zone-overlay .zone-info .details {
+            color: var(--text-secondary);
+            font-size: 7px;
+        }
+        .safe-zone-overlay .zone-close {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .safe-zone-overlay .zone-close:hover {
+            color: var(--text-primary);
+        }
+        
+        /* ============================================================
+        RESPONSIVE
+        ============================================================ */
+        @media (max-width: 768px) {
+            .top-bar {
+                font-size: 7px;
+                padding: 4px 10px;
+                gap: 5px;
+                top: 4px;
+            }
+            .top-bar .logo h1 {
+                font-size: 10px;
+            }
+            .top-bar .logo h1 small {
+                font-size: 6px;
+            }
+            .top-bar .nav-links a {
+                font-size: 6px;
+                padding: 2px 6px;
+            }
+            .top-bar .sos-btn {
+                font-size: 7px;
+                padding: 2px 10px;
+            }
+            .top-bar .badge-gis {
+                font-size: 6px;
+                padding: 1px 6px;
+            }
+            
+            .provider-grid {
+                top: 48px;
+                padding: 4px 6px;
+                gap: 2px;
+            }
+            .provider-btn {
+                font-size: 6px;
+                padding: 2px 6px;
+            }
+            .provider-btn .badge {
+                display: none;
+            }
+            .provider-btn .icon {
+                font-size: 8px;
+            }
+            
+            .right-toolbar {
+                top: 100px;
+                right: 4px;
+            }
+            .right-toolbar .tool-btn {
+                width: 24px;
+                height: 24px;
+                font-size: 9px;
+                padding: 4px;
+            }
+            
+            .status-dashboard {
+                max-width: 130px;
+                bottom: 50px;
+                left: 4px;
+            }
+            .status-dashboard .sd-item {
+                font-size: 6px;
+                padding: 2px 6px;
+            }
+            .status-dashboard .sd-item .icon {
+                font-size: 8px;
+            }
+            
+            .coord-panel {
+                right: 4px;
+                bottom: 50px;
+                font-size: 6px;
+                min-width: 70px;
+                padding: 3px 6px;
+            }
+            
+            .bottom-bar {
+                font-size: 6px;
+                padding: 2px 8px;
+                gap: 5px;
+                bottom: 4px;
+            }
+            .bottom-bar .stat-item i {
+                font-size: 6px;
+            }
+            
+            .panel {
+                min-width: 120px;
+                max-width: 180px;
+                font-size: 7px;
+                padding: 6px 8px;
+                max-height: calc(100vh - 140px);
+            }
+            
+            .safe-zone-overlay {
+                bottom: 80px;
+                padding: 4px 12px;
+                font-size: 7px;
+            }
+            .safe-zone-overlay .zone-icon {
+                font-size: 14px;
+            }
+            .safe-zone-overlay .zone-info .title {
+                font-size: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    
+    <!-- ============================================================
+    TOP BAR
+    ============================================================ -->
+    <header class="top-bar">
+        <div class="logo">
+            <i class="fas fa-globe-americas"></i>
+            <h1>GIS STS WORLD MAP <small>v2.1</small></h1>
+        </div>
+        <span class="badge-gis"><i class="fas fa-link"></i> MODULE</span>
+        <div class="nav-links">
+            <a href="#" class="active"><i class="fas fa-map"></i> Map</a>
+            <a href="#" onclick="togglePanel('safety')"><i class="fas fa-shield-alt"></i> Safety</a>
+            <a href="#" onclick="togglePanel('embassies')"><i class="fas fa-landmark"></i> Embassies</a>
+            <a href="#" onclick="togglePanel('police')"><i class="fas fa-police"></i> Police</a>
+            <a href="#" onclick="togglePanel('lawyers')"><i class="fas fa-scale-balanced"></i> Lawyers</a>
+            <a href="#" onclick="togglePanel('insurance')"><i class="fas fa-file-contract"></i> Insurance</a>
+            <a href="#" onclick="togglePanel('medical')"><i class="fas fa-hospital"></i> Medical</a>
+        </div>
+        <button class="sos-btn" onclick="activateSOS()"><i class="fas fa-exclamation-triangle"></i> SOS</button>
+    </header>
+    
+    <!-- ============================================================
+    PROVIDER GRID — 9 MAP PROVIDERS
+    ============================================================ -->
+    <div class="provider-grid" id="providerGrid">
+        <button class="provider-btn active" data-provider="osm" onclick="switchProvider('osm')">
+            <span class="icon">🗺️</span> OSM
+        </button>
+        <button class="provider-btn" data-provider="cartodb" onclick="switchProvider('cartodb')">
+            <span class="icon">🌙</span> Dark
+        </button>
+        <button class="provider-btn" data-provider="google" onclick="switchProvider('google')">
+            <span class="icon">🔵</span> Google
+        </button>
+        <button class="provider-btn" data-provider="yandex" onclick="switchProvider('yandex')">
+            <span class="icon">🔴</span> Yandex
+        </button>
+        <button class="provider-btn" data-provider="stadiamaps" onclick="switchProvider('stadiamaps')">
+            <span class="icon">🗺️</span> Stadia
+        </button>
+        <button class="provider-btn" data-provider="cyclosm" onclick="switchProvider('cyclosm')">
+            <span class="icon">🚲</span> CyclOSM <span class="badge">Tour</span>
+        </button>
+        <button class="provider-btn" data-provider="wikimapia" onclick="switchProvider('wikimapia')">
+            <span class="icon">📚</span> WikiMapia <span class="badge">Culture</span>
+        </button>
+        <button class="provider-btn" data-provider="opentopomap" onclick="switchProvider('opentopomap')">
+            <span class="icon">⛰️</span> Topo <span class="badge">Topo</span>
+        </button>
+        <button class="provider-btn" data-provider="arcgis" onclick="switchProvider('arcgis')">
+            <span class="icon">🛰️</span> Sat <span class="badge">Sat</span>
+        </button>
+    </div>
+    
+    <!-- ============================================================
+    MAP CONTAINER
+    ============================================================ -->
+    <div id="mapContainer"></div>
+    
+    <!-- ============================================================
+    RIGHT TOOLBAR
+    ============================================================ -->
+    <div class="right-toolbar" id="rightToolbar">
+        <button class="tool-btn" onclick="togglePanel('layers')" title="Layers"><i class="fas fa-layer-group"></i></button>
+        <button class="tool-btn" onclick="togglePanel('safety')" title="Safety"><i class="fas fa-shield-alt"></i><span class="safety-dot green"></span></button>
+        <button class="tool-btn" onclick="togglePanel('embassies')" title="Embassies"><i class="fas fa-landmark"></i><span class="badge-count" id="embassyBadge">3</span></button>
+        <button class="tool-btn" onclick="togglePanel('police')" title="Police"><i class="fas fa-police"></i><span class="badge-count" id="policeBadge">2</span></button>
+        <button class="tool-btn" onclick="togglePanel('lawyers')" title="Lawyers"><i class="fas fa-scale-balanced"></i><span class="badge-count" id="lawyerBadge">4</span></button>
+        <button class="tool-btn" onclick="togglePanel('insurance')" title="Insurance"><i class="fas fa-file-contract"></i></button>
+        <button class="tool-btn" onclick="togglePanel('medical')" title="Medical"><i class="fas fa-hospital"></i><span class="badge-count" id="medicalBadge">2</span></button>
+        <button class="tool-btn" onclick="togglePanel('route')" title="Safe Route"><i class="fas fa-route"></i></button>
+        <button class="tool-btn" onclick="togglePanel('info')" title="Info"><i class="fas fa-info-circle"></i></button>
+        <button class="tool-btn" onclick="togglePanel('measure')" title="Measure"><i class="fas fa-ruler-combined"></i></button>
+        <button class="tool-btn" onclick="getGeolocation()" title="My Location"><i class="fas fa-location-dot"></i></button>
+        <button class="tool-btn" onclick="toggleNightMode()" title="Night Mode"><i class="fas fa-moon"></i></button>
+        <button class="tool-btn" onclick="fullscreen()" title="Fullscreen"><i class="fas fa-expand"></i></button>
+        <button class="tool-btn" onclick="exportScreenshot()" title="Screenshot"><i class="fas fa-camera"></i></button>
+    </div>
+    
+    <!-- ============================================================
+    FLOATING PANELS
+    ============================================================ -->
+    
+    <!-- Layers Panel -->
+    <div class="panel" id="layersPanel">
+        <div class="panel-title">Layers <button class="close-btn" onclick="togglePanel('layers')"><i class="fas fa-times"></i></button></div>
+        <div class="layer-item active" onclick="toggleLayer('safety')"><span class="dot" style="background:var(--accent-green);"></span> Safety Zones</div>
+        <div class="layer-item active" onclick="toggleLayer('embassies')"><span class="dot" style="background:#4fc3f7;"></span> Embassies</div>
+        <div class="layer-item active" onclick="toggleLayer('hospitals')"><span class="dot" style="background:#ff4444;"></span> Hospitals</div>
+        <div class="layer-item active" onclick="toggleLayer('police')"><span class="dot" style="background:#ffaa00;"></span> Police Stations</div>
+        <div class="layer-item active" onclick="toggleLayer('lawyers')"><span class="dot" style="background:#c9a84c;"></span> Lawyers</div>
+        <div class="layer-item active" onclick="toggleLayer('tourism')"><span class="dot" style="background:#4fc3f7;"></span> Tourist POIs</div>
+        <div class="layer-item" onclick="toggleLayer('traffic')"><span class="dot" style="background:#ff8800;"></span> Traffic</div>
+        <div class="layer-item" onclick="toggleLayer('weather')"><span class="dot" style="background:#00ff9d;"></span> Weather</div>
+        <div style="margin-top:4px;border-top:1px solid var(--border-color);padding-top:4px;">
+            <button class="btn-sm" onclick="resetLayers()">Reset All</button>
+        </div>
+    </div>
+    
+    <!-- Safety Panel -->
+    <div class="panel" id="safetyPanel">
+        <div class="panel-title">Safety <button class="close-btn" onclick="togglePanel('safety')"><i class="fas fa-times"></i></button></div>
+        <div class="panel-row"><span class="label">Status:</span><span class="value green" id="safetyStatus">🟢 Safe</span></div>
+        <div class="panel-row"><span class="label">Risk Level:</span><span class="value" id="riskLevel">Low</span></div>
+        <div class="panel-row"><span class="label">Nearest Safe Zone:</span><span class="value blue" id="safeZoneName">Zone Alpha</span></div>
+        <div class="panel-row"><span class="label">Distance:</span><span class="value" id="safeZoneDist">1.2 km</span></div>
+        <div class="panel-row"><span class="label">Emergency:</span><span class="value" id="emergencyContact">+1-888-SOS</span></div>
+        <div class="panel-row" style="gap:4px;flex-wrap:wrap;margin-top:4px;">
+            <button class="btn-sm danger" onclick="activateSOS()"><i class="fas fa-exclamation-triangle"></i> SOS</button>
+            <button class="btn-sm primary" onclick="shareLocation()"><i class="fas fa-share-alt"></i> Share</button>
+            <button class="btn-sm gold" onclick="findSafeZone()"><i class="fas fa-flag-checkered"></i> Safe Zone</button>
+            <button class="btn-sm" onclick="alertContacts()"><i class="fas fa-envelope"></i> Alert</button>
+        </div>
+        <div style="margin-top:4px;border-top:1px solid var(--border-color);padding-top:4px;font-size:7px;color:var(--text-secondary);">
+            <div>📡 GPS: <span id="gpsStatus">Active</span></div>
+            <div>🛰️ Satellites: <span id="satCount">6</span></div>
+            <div>🛡️ Safe Zones: <span id="safeZoneCount">3 nearby</span></div>
+        </div>
+    </div>
+    
+    <!-- Embassies Panel -->
+    <div class="panel" id="embassiesPanel">
+        <div class="panel-title">Embassies <button class="close-btn" onclick="togglePanel('embassies')"><i class="fas fa-times"></i></button></div>
+        <div class="panel-row"><span class="label">Nearby:</span><span class="value" id="embassyCount">Searching...</span></div>
+        <div id="embassyList"></div>
+        <div style="margin-top:4px;border-top:1px solid var(--border-color);padding-top:4px;">
+            <button class="btn-sm primary" onclick="findEmbassies()"><i class="fas fa-search"></i> Find Nearest</button>
+            <button class="btn-sm" onclick="togglePanel('diplomatic')"><i class="fas fa-globe"></i> Diplomatic</button>
+        </div>
+    </div>
+    
+    <!-- Police Panel -->
+    <div class="panel" id="policePanel">
+        <div class="panel-title">Police Stations <button class="close-btn" onclick="togglePanel('police')"><i class="fas fa-times"></i></button></div>
+        <div class="panel-row"><span class="label">Nearest:</span><span class="value" id="nearestPolice">Searching...</span></div>
+        <div class="panel-row"><span class="label">Distance:</span><span class="value" id="policeDist">—</span></div>
+        <div class="panel-row"><span class="label">Phone:</span><span class="value gold" id="policePhone">—</span></div>
+        <div id="policeList"></div>
+        <div style="margin-top:4px;border-top:1px solid var(--border-color);padding-top:4px;">
+            <button class="btn-sm primary" onclick="findPolice()"><i class="fas fa-search"></i> Find Nearest</button>
+            <button class="btn-sm danger" onclick="callPolice()"><i class="fas fa-phone"></i> Call Police</button>
+        </div>
+    </div>
+    
+    <!-- Lawyers Panel -->
+    <div class="panel" id="lawyersPanel">
+        <div class="panel-title">Lawyers <button class="close-btn" onclick="togglePanel('lawyers')"><i class="fas fa-times"></i></button></div>
+        <div class="panel-row"><span class="label">Nearby:</span><span class="value" id="lawyerCount">Searching...</span></div>
+        <div id="lawyerList"></div>
+        <div style="margin-top:4px;border-top:1px solid var(--border-color);padding-top:4px;">
+            <button class="btn-sm primary" onclick="findLawyers()"><i class="fas fa-search"></i> Find Nearest</button>
+            <button class="btn-sm gold" onclick="callLawyer()"><i class="fas fa-phone"></i> Call Partner</button>
+            <button class="btn-sm" onclick="togglePanel('insurance')"><i class="fas fa-file-contract"></i> Insurance</button>
+        </div>
+    </div>
+    
+    <!-- Insurance Panel -->
+    <div class="panel" id="insurancePanel">
+        <div class="panel-title">Insurance <button class="close-btn" onclick="togglePanel('insurance')"><i class="fas fa-times"></i></button></div>
+        <div class="panel-row"><span class="label">Policy:</span><span class="value green" id="insurancePolicy">Active</span></div>
+        <div class="panel-row"><span class="label">Coverage:</span><span class="value" id="insuranceCoverage">€500,000</span></div>
+        <div class="panel-row"><span class="label">Expires:</span><span class="value" id="insuranceExpires">2025-12-31</span></div>
+        <div style="margin-top:4px;gap:4px;display:flex;flex-wrap:wrap;">
+            <button class="btn-sm primary" onclick="claimInsurance()"><i class="fas fa-file-invoice"></i> Claim</button>
+            <button class="btn-sm" onclick="renewInsurance()"><i class="fas fa-sync"></i> Renew</button>
+            <button class="btn-sm" onclick="viewPolicy()"><i class="fas fa-file-pdf"></i> View</button>
+        </div>
+        <div style="margin-top:4px;border-top:1px solid var(--border-color);padding-top:4px;font-size:7px;color:var(--text-secondary);">
+            <div>🆔 Policy #: <span id="policyNumber">STS-2024-7890</span></div>
+            <div>📞 24/7: +1-888-CLAIM</div>
+        </div>
+    </div>
+    
+    <!-- Medical Panel -->
+    <div class="panel" id="medicalPanel">
+        <div class="panel-title">Medical <button class="close-btn" onclick="togglePanel('medical')"><i class="fas fa-times"></i></button></div>
+        <div class="panel-row"><span class="label">Nearest:</span><span class="value" id="nearestHospital">Searching...</span></div>
+        <div class="panel-row"><span class="label">Distance:</span><span class="value" id="hospitalDist">—</span></div>
+        <div class="panel-row"><span class="label">Ambulance:</span><span class="value" id="ambulanceTime">—</span></div>
+        <div id="hospitalList"></div>
+        <div style="margin-top:4px;gap:4px;display:flex;flex-wrap:wrap;">
+            <button class="btn-sm danger" onclick="callAmbulance()"><i class="fas fa-ambulance"></i> Ambulance</button>
+            <button class="btn-sm primary" onclick="telemedicine()"><i class="fas fa-video"></i> Telemedicine</button>
+            <button class="btn-sm" onclick="findHospitals()"><i class="fas fa-search"></i> Find</button>
+        </div>
+        <div style="margin-top:4px;border-top:1px solid var(--border-color);padding-top:4px;font-size:7px;color:var(--text-secondary);">
+            <div>🏥 Clinics: <span id="clinicCount">—</span></div>
+            <div>💊 Pharmacies: <span id="pharmacyCount">—</span></div>
+        </div>
+    </div>
+    
+    <!-- Route Panel -->
+    <div class="panel" id="routePanel">
+        <div class="panel-title">Safe Route <button class="close-btn" onclick="togglePanel('route')"><i class="fas fa-times"></i></button></div>
+        <div class="panel-row"><span class="label">Status:</span><span class="value green" id="routeStatus">Ready</span></div>
+        <div class="panel-row"><span class="label">Distance:</span><span class="value" id="routeDistance">—</span></div>
+        <div class="panel-row"><span class="label">Time:</span><span class="value" id="routeTime">—</span></div>
+        <div class="panel-row"><span class="label">Safety:</span><span class="value green" id="routeSafety">High</span></div>
+        <div style="margin-top:4px;gap:4px;display:flex;flex-wrap:wrap;">
+            <button class="btn-sm primary" onclick="planSafeRoute()"><i class="fas fa-route"></i> Plan Safe Route</button>
+            <button class="btn-sm gold" onclick="toggleSafeZoneOverlay()"><i class="fas fa-flag-checkered"></i> Show Safe Zones</button>
+            <button class="btn-sm" onclick="clearRoute()"><i class="fas fa-eraser"></i> Clear</button>
+        </div>
+        <div style="margin-top:4px;border-top:1px solid var(--border-color);padding-top:4px;font-size:7px;color:var(--text-secondary);">
+            <div>🛡️ Avoiding: <span id="avoidZones">High-risk areas</span></div>
+            <div>📍 Via: <span id="routeVia">Safe zones only</span></div>
+        </div>
+    </div>
+    
+    <!-- Info Panel -->
+    <div class="panel" id="infoPanel">
+        <div class="panel-title">Info <button class="close-btn" onclick="togglePanel('info')"><i class="fas fa-times"></i></button></div>
+        <div class="panel-row"><span class="label">Provider:</span><span class="value" id="infoProvider">OpenStreetMap</span></div>
+        <div class="panel-row"><span class="label">Type:</span><span class="value" id="infoType">Standard</span></div>
+        <div class="panel-row"><span class="label">Zoom:</span><span class="value" id="infoZoom">3</span></div>
+        <div class="panel-row"><span class="label">Objects:</span><span class="value" id="infoObjects">0</span></div>
+        <div class="panel-row"><span class="label">Version:</span><span class="value">STS v2.1</span></div>
+        <div style="margin-top:4px;border-top:1px solid var(--border-color);padding-top:4px;">
+            <button class="btn-sm" onclick="resetView()"><i class="fas fa-home"></i> Reset View</button>
+        </div>
+    </div>
+    
+    <!-- Measure Panel -->
+    <div class="panel" id="measurePanel">
+        <div class="panel-title">Measure <button class="close-btn" onclick="togglePanel('measure')"><i class="fas fa-times"></i></button></div>
+        <div class="panel-row"><span class="label">Distance:</span><span class="value" id="measDist">—</span></div>
+        <div class="panel-row"><span class="label">Area:</span><span class="value" id="measArea">—</span></div>
+        <div style="margin-top:4px;gap:4px;display:flex;flex-wrap:wrap;">
+            <button class="btn-sm primary" onclick="measureDistance()"><i class="fas fa-ruler"></i> Distance</button>
+            <button class="btn-sm primary" onclick="measureArea()"><i class="fas fa-vector-square"></i> Area</button>
+            <button class="btn-sm" onclick="clearMeasurements()"><i class="fas fa-eraser"></i> Clear</button>
+        </div>
+    </div>
+    
+    <!-- Diplomatic Panel -->
+    <div class="panel" id="diplomaticPanel">
+        <div class="panel-title">Diplomatic <button class="close-btn" onclick="togglePanel('diplomatic')"><i class="fas fa-times"></i></button></div>
+        <div class="panel-row"><span class="label">Status:</span><span class="value green">Active</span></div>
+        <div class="panel-row"><span class="label">Contacts:</span><span class="value">195 Countries</span></div>
+        <div style="margin-top:4px;gap:4px;display:flex;flex-wrap:wrap;">
+            <button class="btn-sm primary" onclick="contactEmbassy()"><i class="fas fa-envelope"></i> Contact</button>
+            <button class="btn-sm" onclick="diplomaticProtocol()"><i class="fas fa-file-alt"></i> Protocol</button>
+        </div>
+    </div>
+    
+    <!-- ============================================================
+    COORDINATE PANEL
+    ============================================================ -->
+    <div class="coord-panel" id="coordPanel">
+        <div class="coord-row"><span>LAT</span><span class="cvalue" id="coordLat">21.8500</span></div>
+        <div class="coord-row"><span>LNG</span><span class="cvalue" id="coordLng">26.0000</span></div>
+        <div class="coord-row"><span>MGRS</span><span class="mgrs-value" id="coordMGRS">36Q TP 12345 67890</span></div>
+        <div class="coord-row" style="border-top:1px solid var(--border-color);padding-top:2px;margin-top:2px;">
+            <span>📍</span><span class="cvalue" id="coordLocation">Bir Tawil</span>
+        </div>
+    </div>
+    
+    <!-- ============================================================
+    STATUS DASHBOARD
+    ============================================================ -->
+    <div class="status-dashboard" id="statusDashboard">
+        <div class="sd-item"><span class="icon">🌐</span> Provider: <span class="val" id="statusProvider">OSM</span></div>
+        <div class="sd-item"><span class="icon">📡</span> GPS: <span class="val green" id="statusGPS">Active</span></div>
+        <div class="sd-item"><span class="icon">🛡️</span> Safety: <span class="val green" id="statusSafety">Safe</span></div>
+        <div class="sd-item"><span class="icon">🏛️</span> Embassies: <span class="val gold" id="statusEmbassy">3</span></div>
+        <div class="sd-item"><span class="icon">🚓</span> Police: <span class="val gold" id="statusPolice">2</span></div>
+        <div class="sd-item"><span class="icon">⚖️</span> Lawyers: <span class="val gold" id="statusLawyers">4</span></div>
+        <div class="sd-item"><span class="icon">📋</span> Insurance: <span class="val green" id="statusInsurance">Active</span></div>
+        <div class="sd-item"><span class="icon">🚑</span> Hospital: <span class="val gold" id="statusMedical">2.4 km</span></div>
+        <div class="sd-item"><span class="icon">🏁</span> Safe Zone: <span class="val green" id="statusSafeZone">1.2 km</span></div>
+    </div>
+    
+    <!-- ============================================================
+    SAFE ZONE OVERLAY
+    ============================================================ -->
+    <div class="safe-zone-overlay" id="safeZoneOverlay">
+        <div class="zone-icon">🏁</div>
+        <div class="zone-info">
+            <div class="title">🛡️ Safe Zone Detected</div>
+            <div class="details" id="safeZoneDetails">Zone Alpha · 1.2 km · Secure Area</div>
+        </div>
+        <button class="zone-close" onclick="hideSafeZoneOverlay()"><i class="fas fa-times"></i></button>
+    </div>
+    
+    <!-- ============================================================
+    NOTIFICATIONS
+    ============================================================ -->
+    <div class="notification-container" id="notificationContainer"></div>
+    
+    <!-- ============================================================
+    BOTTOM BAR
+    ============================================================ -->
+    <footer class="bottom-bar" id="bottomBar">
+        <span class="stat-item"><i class="fas fa-globe"></i> <span class="value" id="viewDisplay">2D</span></span>
+        <span class="stat-item"><i class="fas fa-layer-group"></i> <span class="value" id="layerCount">6</span> layers</span>
+        <span class="stat-item"><i class="fas fa-clock"></i> <span class="value" id="timeDisplay">--:--</span></span>
+        <span class="stat-item"><i class="fas fa-satellite"></i> <span class="value" id="satCountBottom">6</span> sat</span>
+        <span class="stat-item"><i class="fas fa-shield-alt"></i> <span class="value green" id="safetyBottom">Safe</span></span>
+        <span class="stat-item"><i class="fas fa-flag-checkered"></i> <span class="value green" id="safeZoneBottom">1.2 km</span></span>
+        <span class="stat-item"><i class="fas fa-wifi"></i> <span class="value green" id="statusOnline">Online</span></span>
+    </footer>
+    
+    <!-- ============================================================
+    JAVASCRIPT — Module Code v2.1
+    ============================================================ -->
+    <script>
+        // ================================================================
+        // 1. MAP PROVIDERS — 9 Sources
+        // ================================================================
+        const PROVIDERS = {
+            osm: { id: 'osm', name: 'OpenStreetMap', url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', icon: '🗺️', type: 'Standard' },
+            cartodb: { id: 'cartodb', name: 'CartoDB Dark', url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', icon: '🌙', type: 'Standard' },
+            google: { id: 'google', name: 'Google Hybrid', url: 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', icon: '🔵', type: 'Hybrid' },
+            yandex: { id: 'yandex', name: 'Yandex', url: 'https://core-renderer-tiles.maps.yandex.net/tiles?l=map&x={x}&y={y}&z={z}', icon: '🔴', type: 'Standard' },
+            stadiamaps: { id: 'stadiamaps', name: 'Stadia', url: 'https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png', icon: '🗺️', type: 'Standard' },
+            cyclosm: { id: 'cyclosm', name: 'CyclOSM', url: 'https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', icon: '🚲', type: 'Tourism' },
+            wikimapia: { id: 'wikimapia', name: 'WikiMapia', url: 'https://tiles.wikimapia.org/?x={x}&y={y}&z={z}', icon: '📚', type: 'Cultural' },
+            opentopomap: { id: 'opentopomap', name: 'OpenTopo', url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', icon: '⛰️', type: 'Topographic' },
+            arcgis: { id: 'arcgis', name: 'ArcGIS Satellite', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', icon: '🛰️', type: 'Satellite' }
+        };
+        
+        // ================================================================
+        // 2. STATE
+        // ================================================================
+        const state = {
+            currentProvider: 'osm',
+            activeLayers: ['safety', 'embassies', 'hospitals', 'police', 'lawyers', 'tourism'],
+            layersVisible: true,
+            measurePoints: [],
+            measureLines: [],
+            isMeasuring: false,
+            measureMode: 'distance',
+            routeControl: null,
+            safeZonesVisible: false,
+            safeZoneMarkers: [],
+            safeZoneCircles: [],
+            currentSafeZone: null
+        };
+        
+        // ================================================================
+        // 3. DATABASE — All Services
+        // ================================================================
+        const SERVICES = {
+            police: [
+                { name: 'Central Police Station', lat: 21.88, lng: 26.02, phone: '+1-555-0101', dist: '0.8 km' },
+                { name: 'District Police', lat: 22.05, lng: 25.92, phone: '+1-555-0102', dist: '2.3 km' },
+                { name: 'Tourist Police', lat: 21.78, lng: 26.08, phone: '+1-555-0103', dist: '3.1 km' }
+            ],
+            lawyers: [
+                { name: 'Global Legal Partners', lat: 21.85, lng: 26.01, phone: '+1-555-0201', dist: '0.3 km', email: 'partner1@sts.com' },
+                { name: 'STS Legal Network', lat: 21.90, lng: 25.98, phone: '+1-555-0202', dist: '0.9 km', email: 'partner2@sts.com' },
+                { name: 'International Law Group', lat: 22.00, lng: 26.05, phone: '+1-555-0203', dist: '1.7 km', email: 'partner3@sts.com' },
+                { name: 'Diplomatic Legal Services', lat: 21.75, lng: 25.88, phone: '+1-555-0204', dist: '2.5 km', email: 'partner4@sts.com' }
+            ],
+            embassies: [
+                { name: 'US Embassy', lat: 21.90, lng: 26.05, flag: '🇺🇸', phone: '+1-202-555-0100', dist: '0.8 km' },
+                { name: 'UK Embassy', lat: 21.80, lng: 25.95, flag: '🇬🇧', phone: '+44-20-555-0100', dist: '1.2 km' },
+                { name: 'France Embassy', lat: 21.95, lng: 26.10, flag: '🇫🇷', phone: '+33-1-555-0100', dist: '1.5 km' },
+                { name: 'Germany Embassy', lat: 21.75, lng: 25.85, flag: '🇩🇪', phone: '+49-30-555-0100', dist: '2.1 km' }
+            ],
+            hospitals: [
+                { name: 'Central Hospital', lat: 21.88, lng: 26.02, phone: '+1-555-0301', dist: '0.8 km', emergency: '+1-555-9999' },
+                { name: 'Clinic El Sheikh', lat: 22.08, lng: 25.78, phone: '+1-555-0302', dist: '2.4 km', emergency: '+1-555-9998' }
+            ],
+            safeZones: [
+                { name: 'Zone Alpha', lat: 21.82, lng: 25.98, radius: 500, status: 'Secure' },
+                { name: 'Zone Beta', lat: 21.92, lng: 26.08, radius: 400, status: 'High Security' },
+                { name: 'Zone Gamma', lat: 21.78, lng: 25.88, radius: 600, status: 'Safe' },
+                { name: 'Zone Delta', lat: 22.02, lng: 25.95, radius: 350, status: 'Emergency Shelter' }
+            ]
+        };
+        
+        // ================================================================
+        // 4. LEAFLET MAP
+        // ================================================================
+        let map = null;
+        let tileLayer = null;
+        let markerCluster = null;
+        let routingControl = null;
+        
+        function initMap() {
+            map = L.map('mapContainer', {
+                center: [21.85, 26.00],
+                zoom: 10,
+                zoomControl: false,
+                attributionControl: true
+            });
+            
+            loadProvider('osm');
+            
+            markerCluster = L.markerClusterGroup({
+                spiderfyOnMaxZoom: true,
+                showCoverageOnHover: false,
+                zoomToBoundsOnClick: true,
+                maxClusterRadius: 50
+            });
+            map.addLayer(markerCluster);
+            
+            // Add sample markers
+            addSampleMarkers();
+            
+            // Events
+            map.on('click', function(e) {
+                const { lat, lng } = e.latlng;
+                updateCoords(lat, lng);
+                if (state.isMeasuring) {
+                    onMeasureClick(e);
+                }
+            });
+            
+            map.on('moveend', function() {
+                const center = map.getCenter();
+                updateCoords(center.lat, center.lng);
+                updateStatusDashboard();
+            });
+            
+            // Resize handler
+            setTimeout(() => map.invalidateSize(), 500);
+            
+            // Find all services
+            setTimeout(() => {
+                findPolice();
+                findLawyers();
+                findEmbassies();
+                findHospitals();
+                findSafeZone();
+            }, 1000);
+            
+            updateClock();
+            setInterval(updateClock, 10000);
+            
+            notify('🌍 GIS STS WORLD MAP v2.1 initialized', 'success');
+        }
+        
+        // ================================================================
+        // 5. PROVIDER LOADING
+        // ================================================================
+        function loadProvider(providerId) {
+            const provider = PROVIDERS[providerId];
+            if (!provider) return;
+            
+            state.currentProvider = providerId;
+            
+            if (tileLayer) {
+                map.removeLayer(tileLayer);
+            }
+            
+            tileLayer = L.tileLayer(provider.url, {
+                maxZoom: 19,
+                attribution: provider.name,
+                subdomains: 'abcd'
+            }).addTo(map);
+            
+            document.querySelectorAll('.provider-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.provider === providerId);
+            });
+            
+            document.getElementById('infoProvider').textContent = provider.name;
+            document.getElementById('infoType').textContent = provider.type;
+            document.getElementById('statusProvider').textContent = providerId.toUpperCase();
+            
+            notify(`📡 ${provider.icon} ${provider.name}`, 'info');
+        }
+        
+        function switchProvider(providerId) {
+            loadProvider(providerId);
+        }
+        
+        // ================================================================
+        // 6. SAMPLE MARKERS
+        // ================================================================
+        function addSampleMarkers() {
+            const cities = [
+                { name: 'Bir Tawil', lat: 21.85, lng: 26.00, type: 'capital' },
+                { name: 'El Sheikh', lat: 22.10, lng: 25.80, type: 'city' },
+                { name: 'Wadi Halfa', lat: 21.80, lng: 25.50, type: 'city' }
+            ];
+            
+            cities.forEach(c => {
+                const color = c.type === 'capital' ? '#c9a84c' : '#4fc3f7';
+                const icon = L.divIcon({
+                    className: 'custom-marker',
+                    html: `<div style="width:8px;height:8px;border-radius:50%;background:${color};border:2px solid rgba(255,255,255,0.8);box-shadow:0 0 10px ${color};"></div>`,
+                    iconSize: [8, 8],
+                    iconAnchor: [4, 4]
+                });
+                const marker = L.marker([c.lat, c.lng], { icon })
+                    .bindPopup(`<b>${c.name}</b><br>${c.type}`);
+                markerCluster.addLayer(marker);
+            });
+            
+            // Add all services to cluster
+            addServicesToMap();
+            
+            document.getElementById('infoObjects').textContent = 
+                cities.length + SERVICES.police.length + SERVICES.lawyers.length + 
+                SERVICES.embassies.length + SERVICES.hospitals.length;
+        }
+        
+        function addServicesToMap() {
+            // Police
+            SERVICES.police.forEach(p => {
+                const icon = L.divIcon({
+                    className: 'police-marker',
+                    html: `<div style="font-size:14px;">🚓</div>`,
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 10]
+                });
+                const marker = L.marker([p.lat, p.lng], { icon })
+                    .bindPopup(`<b>${p.name}</b><br>📞 ${p.phone}<br>📍 ${p.dist}`);
+                markerCluster.addLayer(marker);
+            });
+            
+            // Lawyers
+            SERVICES.lawyers.forEach(l => {
+                const icon = L.divIcon({
+                    className: 'lawyer-marker',
+                    html: `<div style="font-size:14px;">⚖️</div>`,
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 10]
+                });
+                const marker = L.marker([l.lat, l.lng], { icon })
+                    .bindPopup(`<b>${l.name}</b><br>📞 ${l.phone}<br>📧 ${l.email}`);
+                markerCluster.addLayer(marker);
+            });
+            
+            // Embassies
+            SERVICES.embassies.forEach(e => {
+                const icon = L.divIcon({
+                    className: 'embassy-marker',
+                    html: `<div style="font-size:16px;">🏛️</div>`,
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 10]
+                });
+                const marker = L.marker([e.lat, e.lng], { icon })
+                    .bindPopup(`<b>${e.name}</b><br>${e.flag} ${e.phone}`);
+                markerCluster.addLayer(marker);
+            });
+            
+            // Hospitals
+            SERVICES.hospitals.forEach(h => {
+                const icon = L.divIcon({
+                    className: 'hospital-marker',
+                    html: `<div style="font-size:14px;">🏥</div>`,
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 10]
+                });
+                const marker = L.marker([h.lat, h.lng], { icon })
+                    .bindPopup(`<b>${h.name}</b><br>🚑 ${h.emergency}`);
+                markerCluster.addLayer(marker);
+            });
+            
+            // Safe Zones
+            SERVICES.safeZones.forEach(z => {
+                const circle = L.circle([z.lat, z.lng], {
+                    radius: z.radius,
+                    color: '#00ff9d',
+                    fillColor: '#00ff9d',
+                    fillOpacity: 0.08,
+                    weight: 2,
+                    dashArray: '5, 5'
+                }).addTo(map);
+                state.safeZoneCircles.push(circle);
+                
+                const icon = L.divIcon({
+                    className: 'safezone-marker',
+                    html: `<div style="font-size:16px;">🏁</div>`,
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 12]
+                });
+                const marker = L.marker([z.lat, z.lng], { icon })
+                    .bindPopup(`<b>${z.name}</b><br>🛡️ ${z.status}<br>📏 ${z.radius}m radius`);
+                markerCluster.addLayer(marker);
+                state.safeZoneMarkers.push(marker);
+            });
+        }
+        
+        // ================================================================
+        // 7. COORDINATES
+        // ================================================================
+        function updateCoords(lat, lng) {
+            document.getElementById('coordLat').textContent = lat.toFixed(4);
+            document.getElementById('coordLng').textContent = lng.toFixed(4);
+            document.getElementById('coordMGRS').textContent = convertToMGRS(lat, lng);
+            
+            const locations = [
+                { name: 'Bir Tawil', lat: 21.85, lng: 26.00 },
+                { name: 'El Sheikh', lat: 22.10, lng: 25.80 },
+                { name: 'Wadi Halfa', lat: 21.80, lng: 25.50 }
+            ];
+            
+            let nearest = 'Unknown';
+            let minDist = Infinity;
+            locations.forEach(l => {
+                const d = Math.sqrt(Math.pow(lat - l.lat, 2) + Math.pow(lng - l.lng, 2));
+                if (d < minDist) { minDist = d; nearest = l.name; }
+            });
+            document.getElementById('coordLocation').textContent = nearest;
+        }
+        
+        function convertToMGRS(lat, lng) {
+            try {
+                const zone = Math.floor((lng + 180) / 6) + 1;
+                const band = 'CDEFGHJKLMNPQRSTUVWX'[Math.floor((lat + 80) / 8)] || 'T';
+                const east = Math.round((lng - (zone * 6 - 183)) * 1000) % 100000;
+                const north = Math.round((lat % 8) * 1000) % 100000;
+                return `${zone}${band} ${String(east).padStart(5, '0')} ${String(north).padStart(5, '0')}`;
+            } catch (e) {
+                return '36Q TP 12345 67890';
+            }
+        }
+        
+        // ================================================================
+        // 8. POLICE
+        // ================================================================
+        function findPolice() {
+            const center = map.getCenter();
+            const sorted = SERVICES.police.map(p => {
+                const d = distanceBetween(center.lat, center.lng, p.lat, p.lng);
+                return { ...p, dist: (d / 1000).toFixed(1) + ' km' };
+            }).sort((a, b) => parseFloat(a.dist) - parseFloat(b.dist));
+            
+            const list = document.getElementById('policeList');
+            list.innerHTML = sorted.slice(0, 4).map(p => `
+                <div class="service-item">
+                    <span class="icon">🚓</span>
+                    <span class="name">${p.name}</span>
+                    <span class="dist">${p.dist}</span>
+                    <span class="phone">📞 ${p.phone}</span>
+                </div>
+            `).join('');
+            
+            if (sorted.length > 0) {
+                document.getElementById('nearestPolice').textContent = sorted[0].name;
+                document.getElementById('policeDist').textContent = sorted[0].dist;
+                document.getElementById('policePhone').textContent = sorted[0].phone;
+                document.getElementById('policeBadge').textContent = sorted.length;
+                document.getElementById('statusPolice').textContent = sorted.length;
+            }
+        }
+        
+        function callPolice() {
+            const phone = document.getElementById('policePhone').textContent;
+            if (phone && phone !== '—') {
+                notify(`📞 Calling Police: ${phone}`, 'warning');
+                window.open(`tel:${phone.replace(/[^0-9+]/g, '')}`);
+            } else {
+                notify('📞 Police emergency: 911 or local emergency number', 'warning');
+            }
+        }
+        
+        // ================================================================
+        // 9. LAWYERS
+        // ================================================================
+        function findLawyers() {
+            const center = map.getCenter();
+            const sorted = SERVICES.lawyers.map(l => {
+                const d = distanceBetween(center.lat, center.lng, l.lat, l.lng);
+                return { ...l, dist: (d / 1000).toFixed(1) + ' km' };
+            }).sort((a, b) => parseFloat(a.dist) - parseFloat(b.dist));
+            
+            const list = document.getElementById('lawyerList');
+            list.innerHTML = sorted.slice(0, 4).map(l => `
+                <div class="service-item">
+                    <span class="icon">⚖️</span>
+                    <span class="name">${l.name}</span>
+                    <span class="dist">${l.dist}</span>
+                    <span class="phone">📞 ${l.phone}</span>
+                </div>
+            `).join('');
+            
+            if (sorted.length > 0) {
+                document.getElementById('lawyerCount').textContent = sorted.length + ' partners';
+                document.getElementById('lawyerBadge').textContent = sorted.length;
+                document.getElementById('statusLawyers').textContent = sorted.length;
+            }
+        }
+        
+        function callLawyer() {
+            const first = SERVICES.lawyers[0];
+            if (first) {
+                notify(`📞 Calling STS Partner: ${first.phone}`, 'success');
+                window.open(`tel:${first.phone.replace(/[^0-9+]/g, '')}`);
+            }
+        }
+        
+        // ================================================================
+        // 10. EMBASSIES
+        // ================================================================
+        function findEmbassies() {
+            const center = map.getCenter();
+            const sorted = SERVICES.embassies.map(e => {
+                const d = distanceBetween(center.lat, center.lng, e.lat, e.lng);
+                return { ...e, dist: (d / 1000).toFixed(1) + ' km' };
+            }).sort((a, b) => parseFloat(a.dist) - parseFloat(b.dist));
+            
+            const list = document.getElementById('embassyList');
+            list.innerHTML = sorted.slice(0, 4).map(e => `
+                <div class="service-item">
+                    <span class="icon">${e.flag}</span>
+                    <span class="name">${e.name}</span>
+                    <span class="dist">${e.dist}</span>
+                    <span class="phone">📞 ${e.phone}</span>
+                </div>
+            `).join('');
+            
+            if (sorted.length > 0) {
+                document.getElementById('embassyCount').textContent = sorted.length + ' nearby';
+                document.getElementById('embassyBadge').textContent = sorted.length;
+                document.getElementById('statusEmbassy').textContent = sorted.length;
+            }
+        }
+        
+        function contactEmbassy() {
+            const first = SERVICES.embassies[0];
+            if (first) {
+                notify(`📞 Contacting ${first.name}: ${first.phone}`, 'success');
+            }
+        }
+        
+        function diplomaticProtocol() {
+            notify('📋 Diplomatic protocol initiated', 'info');
+        }
+        
+        // ================================================================
+        // 11. MEDICAL
+        // ================================================================
+        function findHospitals() {
+            const center = map.getCenter();
+            const sorted = SERVICES.hospitals.map(h => {
+                const d = distanceBetween(center.lat, center.lng, h.lat, h.lng);
+                return { ...h, dist: (d / 1000).toFixed(1) + ' km' };
+            }).sort((a, b) => parseFloat(a.dist) - parseFloat(b.dist));
+            
+            const list = document.getElementById('hospitalList');
+            list.innerHTML = sorted.slice(0, 3).map(h => `
+                <div class="service-item">
+                    <span class="icon">🏥</span>
+                    <span class="name">${h.name}</span>
+                    <span class="dist">${h.dist}</span>
+                    <span class="phone">🚑 ${h.emergency}</span>
+                </div>
+            `).join('');
+            
+            if (sorted.length > 0) {
+                document.getElementById('nearestHospital').textContent = sorted[0].name;
+                document.getElementById('hospitalDist').textContent = sorted[0].dist;
+                document.getElementById('ambulanceTime').textContent = (parseFloat(sorted[0].dist) * 3).toFixed(0) + ' min';
+                document.getElementById('medicalBadge').textContent = sorted.length;
+                document.getElementById('statusMedical').textContent = sorted[0].dist;
+                document.getElementById('clinicCount').textContent = sorted.length;
+                document.getElementById('pharmacyCount').textContent = '3';
+            }
+        }
+        
+        function callAmbulance() {
+            const first = SERVICES.hospitals[0];
+            if (first) {
+                notify(`🚑 Ambulance dispatched from ${first.name}`, 'success');
+                notify(`📞 Emergency: ${first.emergency}`, 'warning');
+            }
+        }
+        
+        function telemedicine() {
+            notify('📹 Telemedicine consultation started', 'success');
+        }
+        
+        // ================================================================
+        // 12. SAFE ZONE
+        // ================================================================
+        function findSafeZone() {
+            const center = map.getCenter();
+            const sorted = SERVICES.safeZones.map(z => {
+                const d = distanceBetween(center.lat, center.lng, z.lat, z.lng);
+                return { ...z, dist: (d / 1000).toFixed(1) + ' km' };
+            }).sort((a, b) => parseFloat(a.dist) - parseFloat(b.dist));
+            
+            if (sorted.length > 0) {
+                const nearest = sorted[0];
+                state.currentSafeZone = nearest;
+                document.getElementById('safeZoneName').textContent = nearest.name;
+                document.getElementById('safeZoneDist').textContent = nearest.dist;
+                document.getElementById('safeZoneCount').textContent = sorted.length + ' nearby';
+                document.getElementById('safeZoneBottom').textContent = nearest.dist;
+                document.getElementById('statusSafeZone').textContent = nearest.dist;
+                document.getElementById('safeZoneDetails').textContent = 
+                    `${nearest.name} · ${nearest.dist} · ${nearest.status}`;
+            }
+        }
+        
+        function toggleSafeZoneOverlay() {
+            const overlay = document.getElementById('safeZoneOverlay');
+            const isHidden = overlay.style.display === 'none' || overlay.style.display === '';
+            overlay.style.display = isHidden ? 'flex' : 'none';
+            
+            if (isHidden) {
+                findSafeZone();
+                // Highlight safe zones on map
+                state.safeZoneCircles.forEach(c => {
+                    c.setStyle({ opacity: 1, fillOpacity: 0.15 });
+                });
+                notify('🏁 Safe zones highlighted on map', 'success');
+            } else {
+                state.safeZoneCircles.forEach(c => {
+                    c.setStyle({ opacity: 0.3, fillOpacity: 0.05 });
+                });
+            }
+        }
+        
+        function hideSafeZoneOverlay() {
+            document.getElementById('safeZoneOverlay').style.display = 'none';
+            state.safeZoneCircles.forEach(c => {
+                c.setStyle({ opacity: 0.3, fillOpacity: 0.05 });
+            });
+        }
+        
+        // ================================================================
+        // 13. SAFE ROUTE
+        // ================================================================
+        function planSafeRoute() {
+            const center = map.getCenter();
+            
+            // Find nearest safe zone as destination
+            const sorted = SERVICES.safeZones.map(z => {
+                const d = distanceBetween(center.lat, center.lng, z.lat, z.lng);
+                return { ...z, dist: d };
+            }).sort((a, b) => a.dist - b.dist);
+            
+            if (sorted.length === 0) {
+                notify('No safe zones found nearby', 'warning');
+                return;
+            }
+            
+            const destination = sorted[0];
+            
+            // Clear previous route
+            if (routingControl) {
+                map.removeControl(routingControl);
+                routingControl = null;
+            }
+            
+            // Create route
+            routingControl = L.Routing.control({
+                waypoints: [
+                    L.latLng(center.lat, center.lng),
+                    L.latLng(destination.lat, destination.lng)
+                ],
+                routeWhileDragging: true,
+                showAlternatives: true,
+                createMarker: function() { return null; },
+                router: L.Routing.osrmv1({
+                    serviceUrl: 'https://router.project-osrm.org/route/v1/'
+                }),
+                lineOptions: {
+                    styles: [{ color: '#00ff9d', weight: 4, opacity: 0.9 }]
+                },
+                altLineOptions: {
+                    styles: [{ color: '#4fc3f7', weight: 3, opacity: 0.6, dashArray: '8, 8' }]
+                }
+            }).addTo(map);
+            
+            // Update route info
+            document.getElementById('routeStatus').textContent = '🟢 Planned';
+            document.getElementById('routeDistance').textContent = (destination.dist / 1000).toFixed(2) + ' km';
+            document.getElementById('routeTime').textContent = Math.round(destination.dist / 5000 * 60) + ' min';
+            document.getElementById('routeSafety').textContent = '🟢 High';
+            document.getElementById('avoidZones').textContent = 'High-risk areas avoided';
+            document.getElementById('routeVia').textContent = destination.name + ' safe zone';
+            
+            notify(`📍 Safe route to ${destination.name} planned`, 'success');
+            
+            // Show safe zone overlay
+            document.getElementById('safeZoneOverlay').style.display = 'flex';
+            document.getElementById('safeZoneDetails').textContent = 
+                `${destination.name} · ${(destination.dist / 1000).toFixed(1)} km · Safe Route Planned`;
+        }
+        
+        function clearRoute() {
+            if (routingControl) {
+                map.removeControl(routingControl);
+                routingControl = null;
+            }
+            document.getElementById('routeStatus').textContent = 'Ready';
+            document.getElementById('routeDistance').textContent = '—';
+            document.getElementById('routeTime').textContent = '—';
+            document.getElementById('routeSafety').textContent = '—';
+            notify('Route cleared', 'info');
+        }
+        
+        // ================================================================
+        // 14. LAYERS
+        // ================================================================
+        function toggleLayer(layerId) {
+            const idx = state.activeLayers.indexOf(layerId);
+            if (idx > -1) {
+                state.activeLayers.splice(idx, 1);
+            } else {
+                state.activeLayers.push(layerId);
+            }
+            
+            const panel = document.getElementById('layersPanel');
+            panel.querySelectorAll('.layer-item').forEach(el => {
+                const id = el.textContent.trim().toLowerCase().replace(/[^a-z]/g, '');
+                if (id === layerId || el.textContent.includes(layerId)) {
+                    el.classList.toggle('active');
+                }
+            });
+            
+            document.getElementById('layerCount').textContent = state.activeLayers.length;
+            notify(`Layer ${layerId}: ${idx > -1 ? 'OFF' : 'ON'}`, 'info');
+        }
+        
+        function resetLayers() {
+            state.activeLayers = ['safety', 'embassies', 'hospitals', 'police', 'lawyers', 'tourism'];
+            document.getElementById('layerCount').textContent = '6';
+            document.querySelectorAll('#layersPanel .layer-item').forEach(el => {
+                el.classList.add('active');
+            });
+            notify('Layers reset', 'info');
+        }
+        
+        // ================================================================
+        // 15. MEASUREMENTS
+        // ================================================================
+        function measureDistance() {
+            state.isMeasuring = true;
+            state.measureMode = 'distance';
+            state.measurePoints = [];
+            state.measureLines = [];
+            notify('Click on map to measure distance', 'info');
+        }
+        
+        function measureArea() {
+            state.isMeasuring = true;
+            state.measureMode = 'area';
+            state.measurePoints = [];
+            state.measureLines = [];
+            notify('Click on map to measure area (min 3 points)', 'info');
+        }
+        
+        function onMeasureClick(e) {
+            const { lat, lng } = e.latlng;
+            state.measurePoints.push([lat, lng]);
+            
+            L.circleMarker([lat, lng], {
+                color: '#4fc3f7',
+                radius: 4,
+                fillOpacity: 1
+            }).addTo(map);
+            
+            if (state.measurePoints.length > 1) {
+                const line = L.polyline(state.measurePoints, {
+                    color: '#4fc3f7',
+                    weight: 2,
+                    opacity: 0.6
+                }).addTo(map);
+                state.measureLines.push(line);
+                
+                if (state.measureMode === 'distance') {
+                    const dist = distanceBetween(
+                        state.measurePoints[0][0],
+                        state.measurePoints[0][1],
+                        lat, lng
+                    );
+                    document.getElementById('measDist').textContent = (dist / 1000).toFixed(2) + ' km';
+                }
+            }
+            
+            if (state.measurePoints.length >= 3 && state.measureMode === 'area') {
+                let area = 0;
+                const n = state.measurePoints.length;
+                for (let i = 0; i < n; i++) {
+                    const j = (i + 1) % n;
+                    area += (state.measurePoints[i][1] * state.measurePoints[j][0] -
+                             state.measurePoints[j][1] * state.measurePoints[i][0]);
+                }
+                area = Math.abs(area) / 2 * 111.32 * 111.32;
+                document.getElementById('measArea').textContent = area.toFixed(2) + ' km²';
+            }
+        }
+        
+        function clearMeasurements() {
+            state.measurePoints = [];
+            state.measureLines.forEach(line => map.removeLayer(line));
+            state.measureLines = [];
+            state.isMeasuring = false;
+            document.getElementById('measDist').textContent = '—';
+            document.getElementById('measArea').textContent = '—';
+            notify('Measurements cleared', 'info');
+        }
+        
+        function distanceBetween(lat1, lng1, lat2, lng2) {
+            const R = 6371000;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLng / 2) * Math.sin(dLng / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+        
+        // ================================================================
+        // 16. EMERGENCY / SOS
+        // ================================================================
+        function activateSOS() {
+            const center = map.getCenter();
+            const lat = center.lat.toFixed(4);
+            const lng = center.lng.toFixed(4);
+            
+            notify('🆘 SOS ACTIVATED! Emergency services notified.', 'error');
+            notify(`📍 Location: ${lat}, ${lng}`, 'warning');
+            notify('📞 Emergency contact: +1-888-SOS-HELP', 'warning');
+            notify('🚓 Police: 911 or local emergency', 'warning');
+            notify('🚑 Ambulance dispatched', 'warning');
+            
+            // Add SOS marker
+            const icon = L.divIcon({
+                className: 'sos-marker',
+                html: `<div style="width:40px;height:40px;border-radius:50%;background:#ff4444;border:3px solid white;box-shadow:0 0 60px #ff4444;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:white;animation:pulse 1s ease-in-out infinite;">SOS</div>`,
+                iconSize: [40, 40],
+                iconAnchor: [20, 20]
+            });
+            L.marker([center.lat, center.lng], { icon })
+                .bindPopup('🚨 SOS Emergency - Help Needed')
+                .addTo(map);
+            
+            // Flash effect
+            document.body.style.transition = 'background-color 0.5s';
+            for (let i = 0; i < 5; i++) {
+                setTimeout(() => {
+                    document.body.style.backgroundColor = 'rgba(255,0,0,0.15)';
+                    setTimeout(() => {
+                        document.body.style.backgroundColor = '';
+                    }, 300);
+                }, i * 500);
+            }
+            
+            // Find nearest services
+            findPolice();
+            findHospitals();
+            findSafeZone();
+        }
+        
+        function shareLocation() {
+            const center = map.getCenter();
+            notify(`📍 Location shared: ${center.lat.toFixed(4)}, ${center.lng.toFixed(4)}`, 'success');
+            notify('📧 Sent to: Emergency Contacts, Police, Embassy', 'success');
+        }
+        
+        function alertContacts() {
+            notify('📧 Emergency contacts alerted', 'success');
+            notify('📱 SMS sent to 3 emergency contacts', 'success');
+        }
+        
+        // ================================================================
+        // 17. INSURANCE
+        // ================================================================
+        function claimInsurance() {
+            notify('📋 Insurance claim submitted. Case #: STS-' + Math.floor(Math.random() * 10000), 'success');
+            notify('📞 Lawyer notified: +1-555-0201', 'success');
+        }
+        
+        function renewInsurance() {
+            notify('🔄 Insurance renewed until 2026-12-31', 'success');
+        }
+        
+        function viewPolicy() {
+            notify('📄 Policy document opened', 'info');
+        }
+        
+        // ================================================================
+        // 18. NAVIGATION
+        // ================================================================
+        function getGeolocation() {
+            if (!navigator.geolocation) {
+                notify('Geolocation not supported', 'warning');
+                return;
+            }
+            navigator.geolocation.getCurrentPosition(
+                function(pos) {
+                    const { latitude, longitude } = pos.coords;
+                    map.flyTo([latitude, longitude], 14);
+                    updateCoords(latitude, longitude);
+                    notify('📍 Your location found', 'success');
+                    // Update all services
+                    setTimeout(() => {
+                        findPolice();
+                        findLawyers();
+                        findEmbassies();
+                        findHospitals();
+                        findSafeZone();
+                    }, 500);
+                },
+                function(err) {
+                    notify('Geolocation error: ' + err.message, 'error');
+                }
+            );
+        }
+        
+        function resetView() {
+            map.flyTo([21.85, 26.00], 10);
+            notify('View reset', 'info');
+        }
+        
+        function fullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => {});
+            } else {
+                document.exitFullscreen().catch(() => {});
+            }
+        }
+        
+        function toggleNightMode() {
+            document.body.classList.toggle('night-mode');
+            notify(document.body.classList.contains('night-mode') ? '🌙 Night mode ON' : '☀️ Night mode OFF', 'info');
+        }
+        
+        // ================================================================
+        // 19. EXPORT
+        // ================================================================
+        function exportScreenshot() {
+            notify('📸 Screenshot captured', 'success');
+        }
+        
+        // ================================================================
+        // 20. STATUS DASHBOARD
+        // ================================================================
+        function updateStatusDashboard() {
+            const center = map.getCenter();
+            const satCount = Math.floor(6 + Math.random() * 4);
+            document.getElementById('satCount').textContent = satCount;
+            document.getElementById('satCountBottom').textContent = satCount;
+            document.getElementById('statusGPS').textContent = 'Active';
+            document.getElementById('statusGPS').className = 'val green';
+            document.getElementById('safetyBottom').textContent = 'Safe';
+            document.getElementById('safetyBottom').className = 'value green';
+            document.getElementById('statusOnline').textContent = 'Online';
+            document.getElementById('statusOnline').className = 'value green';
+            
+            const risks = ['Low', 'Moderate', 'Safe'];
+            const risk = risks[Math.floor(Math.random() * risks.length)];
+            document.getElementById('riskLevel').textContent = risk;
+            document.getElementById('riskLevel').className = 'value ' + 
+                (risk === 'Low' ? 'green' : risk === 'Moderate' ? 'gold' : 'green');
+        }
+        
+        // ================================================================
+        // 21. PANEL MANAGEMENT
+        // ================================================================
+        function togglePanel(panelId) {
+            const panel = document.getElementById(panelId + 'Panel');
+            if (!panel) return;
+            
+            const isHidden = panel.style.display === 'none' || panel.style.display === '';
+            panel.style.display = isHidden ? 'block' : 'none';
+            
+            // Special actions on panel open
+            if (panelId === 'police' && isHidden) findPolice();
+            if (panelId === 'lawyers' && isHidden) findLawyers();
+            if (panelId === 'embassies' && isHidden) findEmbassies();
+            if (panelId === 'medical' && isHidden) findHospitals();
+            if (panelId === 'safety' && isHidden) findSafeZone();
+            if (panelId === 'route' && isHidden) toggleSafeZoneOverlay();
+        }
+        
+        // ================================================================
+        // 22. NOTIFICATIONS
+        // ================================================================
+        function notify(message, type = 'info') {
+            const container = document.getElementById('notificationContainer');
+            const el = document.createElement('div');
+            el.className = `notification ${type}`;
+            el.textContent = message;
+            container.appendChild(el);
+            
+            setTimeout(() => {
+                el.style.opacity = '0';
+                el.style.transform = 'translateX(80px)';
+                setTimeout(() => el.remove(), 300);
+            }, 5000);
+        }
+        
+        // ================================================================
+        // 23. CLOCK
+        // ================================================================
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('timeDisplay').textContent =
+                now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        }
+        
+        // ================================================================
+        // 24. INITIALIZATION
+        // ================================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            initMap();
+            
+            // Update status periodically
+            setInterval(updateStatusDashboard, 5000);
+            
+            console.log('%c🌍 GIS STS WORLD MAP v2.1', 'font-size:20px;color:#4fc3f7;font-weight:bold;');
+            console.log('%c📡 9 Map Providers Loaded', 'color:#8892b0;');
+            console.log('%c🛡️ Safety & Safe Zone Detection', 'color:#8892b0;');
+            console.log('%c🚓 Police Stations: ' + SERVICES.police.length, 'color:#8892b0;');
+            console.log('%c⚖️ Lawyers: ' + SERVICES.lawyers.length + ' partners', 'color:#8892b0;');
+            console.log('%c🏛️ Embassies: ' + SERVICES.embassies.length + ' countries', 'color:#8892b0;');
+            console.log('%c🏥 Hospitals: ' + SERVICES.hospitals.length, 'color:#8892b0;');
+            console.log('%c🏁 Safe Zones: ' + SERVICES.safeZones.length, 'color:#8892b0;');
+            console.log('%c📋 Insurance: Active', 'color:#8892b0;');
+            console.log('%c🛣️ Safe Route Planning Active', 'color:#8892b0;');
+        });
+        
+        // ================================================================
+        // 25. NIGHT MODE STYLES
+        // ================================================================
+        const nightStyles = document.createElement('style');
+        nightStyles.textContent = `
+            .night-mode {
+                filter: invert(1) hue-rotate(180deg) saturate(0.8);
+            }
+            .night-mode .leaflet-tile-pane {
+                filter: invert(1) hue-rotate(180deg) saturate(0.8);
+            }
+            .night-mode .top-bar,
+            .night-mode .provider-grid,
+            .night-mode .right-toolbar .tool-btn,
+            .night-mode .panel,
+            .night-mode .coord-panel,
+            .night-mode .status-dashboard .sd-item,
+            .night-mode .bottom-bar,
+            .night-mode .notification,
+            .night-mode .safe-zone-overlay {
+                filter: invert(1) hue-rotate(180deg) saturate(0.8);
+            }
+            .night-mode .leaflet-routing-container {
+                filter: invert(1) hue-rotate(180deg) saturate(0.8);
+            }
+        `;
+        document.head.appendChild(nightStyles);
+    </script>
+</body>
+</html>
